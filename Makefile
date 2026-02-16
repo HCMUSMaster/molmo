@@ -1,4 +1,4 @@
-.PHONY: eval clean help eval-ultralow eval-low eval-medium eval-high setup-swap activate-swap activate
+.PHONY: eval clean help eval-ultralow eval-low eval-medium eval-high setup-swap activate-swap resize-swap activate
 
 # Default variables
 CHECKPOINT ?= ./checkpoints/Molmo-7B-D-0924
@@ -7,6 +7,7 @@ SEQ_LEN ?= 512
 MAX_CROPS ?= 4
 NPROC ?= 1
 MAX_EXAMPLES ?= -1
+SWAP_SIZE ?= 32G
 
 # Ultra-low memory evaluation (minimal RAM usage)
 eval-ultralow:
@@ -113,12 +114,12 @@ test-chart_qa:
 
 # Setup swap file (one-time setup)
 setup-swap:
-	@echo "Setting up 16GB swap file..."
+	@echo "Setting up $(SWAP_SIZE) swap file..."
 	@if [ -f /swapfile ]; then \
 		echo "Swap file already exists at /swapfile"; \
 		ls -lh /swapfile; \
 	else \
-		sudo fallocate -l 16G /swapfile && \
+		sudo fallocate -l $(SWAP_SIZE) /swapfile && \
 		sudo chmod 600 /swapfile && \
 		sudo mkswap /swapfile && \
 		sudo swapon /swapfile && \
@@ -126,6 +127,27 @@ setup-swap:
 		echo "Swap file created and activated!"; \
 	fi
 	@echo ""
+	@swapon --show
+	@echo ""
+	@free -h
+
+# Resize swap file
+resize-swap:
+	@echo "Resizing swap to $(SWAP_SIZE)..."
+	@echo "Current swap status:"
+	@swapon --show
+	@echo ""
+	@echo "Turning off swap..."
+	@sudo swapoff /swapfile || true
+	@echo "Removing old swap file..."
+	@sudo rm -f /swapfile
+	@echo "Creating new $(SWAP_SIZE) swap file..."
+	@sudo fallocate -l $(SWAP_SIZE) /swapfile
+	@sudo chmod 600 /swapfile
+	@sudo mkswap /swapfile
+	@sudo swapon /swapfile
+	@echo ""
+	@echo "New swap status:"
 	@swapon --show
 	@echo ""
 	@free -h
@@ -199,11 +221,17 @@ help:
 	@echo ""
 	@echo "=== Utilities ==="
 	@echo "  make activate          - Show commands to activate venv and set MOLMO_DATA_DIR"
-	@echo "  make setup-swap        - Create 16GB swap file (one-time setup)"
+	@echo "  make setup-swap        - Create swap file (default: 32GB, set SWAP_SIZE to change)"
+	@echo "  make resize-swap       - Resize existing swap (default: 32GB, set SWAP_SIZE to change)"
 	@echo "  make activate-swap     - Activate swap after WSL restart"
 	@echo "  make monitor           - Monitor system resources in real-time"
 	@echo "  make clean             - Remove Python cache files"
 	@echo "  make help              - Show this help message"
+	@echo ""
+	@echo "=== Swap Management Examples ==="
+	@echo "  make setup-swap SWAP_SIZE=32G           # Create 32GB swap"
+	@echo "  make resize-swap SWAP_SIZE=64G          # Resize to 64GB"
+	@echo "  make activate-swap                      # Reactivate after WSL restart"
 	@echo ""
 	@echo "=== Memory Optimization Tips ==="
 	@echo "  1. Start with 'eval-ultralow' or 'eval-low' if you have 8GB RAM"
