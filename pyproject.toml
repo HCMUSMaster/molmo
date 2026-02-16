@@ -80,4 +80,4 @@ Repository = "https://github.com/allenai/molmo"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["olmo"]
+packages = ["olmo", "scripts", "launch_scripts"]
